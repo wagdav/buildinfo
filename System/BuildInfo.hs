@@ -11,13 +11,16 @@ import Language.Haskell.TH.Ppr (pprint)
 
 import Data.Ratio ((%), numerator, denominator)
 import Data.Time
+import System.Directory (getDirectoryContents, getCurrentDirectory)
 import System.Process (runInteractiveCommand, waitForProcess)
 import System.IO (hGetLine)
+import System.FilePath ((</>))
 import System.Exit
 
 data BuildInfo = BuildInfo
     { buildDate :: UTCTime
     , scmInfo :: Maybe ScmInfo
+    , versionInfo :: Maybe String
     } deriving (Show)
 
 data ScmInfo = Git String
@@ -26,7 +29,8 @@ data ScmInfo = Git String
     deriving (Show)
 
 instance Lift BuildInfo where
-    lift (BuildInfo bDate scmInfo) = [| BuildInfo bDate scmInfo |]
+    lift (BuildInfo bDate scmInfo versionInfo) =
+         [| BuildInfo bDate scmInfo versionInfo |]
 
 instance Lift UTCTime where
     lift (UTCTime (ModifiedJulianDay day) diffTime) = 
@@ -51,10 +55,12 @@ pprintQ q = putStrLn . pprint =<< runQ q
 -- template Haskell free definitions
 genBuildInfo :: IO BuildInfo
 genBuildInfo = do
+    version <- genVersionContent
     date <- getCurrentTime
     scmInfo <- genScmInfo
-    return BuildInfo { buildDate=date
-                     , scmInfo = scmInfo }
+    return BuildInfo { buildDate = date
+                     , scmInfo = scmInfo
+                     , versionInfo = version }
 
 {- source code management information -}
 genScmInfo :: IO (Maybe ScmInfo)
@@ -85,3 +91,24 @@ svn = return Nothing
 
 hg :: IO (Maybe ScmInfo)
 hg = return Nothing
+
+{- find VERSION file -}
+genVersionContent :: IO (Maybe String)
+genVersionContent = do
+    versionFilePath <- findVersion =<< getCurrentDirectory
+    case versionFilePath of
+        Just p -> do content <- readFile p
+                     return (Just content)
+        Nothing -> return Nothing
+
+findVersion :: FilePath -> IO (Maybe FilePath)
+findVersion directory = go directory 5
+    where
+    go _ 0 = return Nothing
+    go dir hops = do
+        ct <- getDirectoryContents dir
+        if versionFile `elem` ct
+            then return $ Just (dir </> versionFile)
+            else go (dir </> "..") (hops - 1)
+
+    versionFile = "VERSION"
