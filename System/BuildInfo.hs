@@ -6,7 +6,7 @@ module System.BuildInfo (
 
 -- template Haskell
 import Language.Haskell.TH
-import Language.Haskell.TH.Syntax (Lift, lift)
+import Language.Haskell.TH.Syntax (Lift, lift, location)
 import Language.Haskell.TH.Ppr (pprint)
 
 import Data.Ratio ((%), numerator, denominator)
@@ -42,6 +42,8 @@ instance Lift ScmInfo where
 
 buildInfo :: Q Exp
 buildInfo = do
+    loc <- location
+    runIO $ print $ loc_filename loc
     bi <- runIO genBuildInfo
     [| bi |]
 
