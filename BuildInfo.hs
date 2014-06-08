@@ -11,6 +11,9 @@ import Language.Haskell.TH.Ppr (pprint)
 
 import Data.Ratio ((%), numerator, denominator)
 import Data.Time
+import System.Process (runInteractiveCommand, waitForProcess)
+import System.IO (hGetLine)
+import System.Exit
 
 data BuildInfo = BuildInfo
     { buildDate :: UTCTime
@@ -53,21 +56,32 @@ genBuildInfo = do
     return BuildInfo { buildDate=date
                      , scmInfo = scmInfo }
 
--- source code management information
+{- source code management information -}
 genScmInfo :: IO (Maybe ScmInfo)
-genScmInfo = do
-    scmInfo <- git
-    print scmInfo
-    return scmInfo
+genScmInfo =          git
+             `firstM` svn
+             `firstM` hg
+
+infixr 0 `firstM`
+firstM :: Monad m => m (Maybe a) -> m (Maybe a) -> m (Maybe a)
+firstM op1 op2 = do
+    r1 <- op1
+    case r1 of
+        Just _ -> return r1
+        Nothing -> op2
 
 git :: IO (Maybe ScmInfo)
-git = return $ Just (Git "blabla")
+git = do
+    (_, out, _, handle) <- runInteractiveCommand "git describe --always"
+    exitCode <- waitForProcess handle
+    case exitCode of
+        ExitSuccess -> do
+            output <- hGetLine out
+            return $ Just (Git output)
+        _ -> return Nothing
 
 svn :: IO (Maybe ScmInfo)
 svn = return Nothing
 
 hg :: IO (Maybe ScmInfo)
 hg = return Nothing
-
--- from the main code you can write
--- show $(buildInfo)
