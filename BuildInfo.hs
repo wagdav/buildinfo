@@ -49,7 +49,25 @@ pprintQ q = putStrLn . pprint =<< runQ q
 genBuildInfo :: IO BuildInfo
 genBuildInfo = do
     date <- getCurrentTime
-    return BuildInfo { buildDate=date, vcInfo = Nothing } 
+    scmInfo <- genScmInfo
+    return BuildInfo { buildDate=date
+                     , scmInfo = scmInfo }
+
+-- source code management information
+genScmInfo :: IO (Maybe ScmInfo)
+genScmInfo = do
+    scmInfo <- git
+    print scmInfo
+    return scmInfo
+
+git :: IO (Maybe ScmInfo)
+git = return $ Just (Git "blabla")
+
+svn :: IO (Maybe ScmInfo)
+svn = return Nothing
+
+hg :: IO (Maybe ScmInfo)
+hg = return Nothing
 
 -- from the main code you can write
 -- show $(buildInfo)
