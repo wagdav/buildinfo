@@ -14,16 +14,16 @@ import Data.Time
 
 data BuildInfo = BuildInfo
     { buildDate :: UTCTime
-    , vcInfo :: Maybe VCInfo
+    , scmInfo :: Maybe ScmInfo
     } deriving (Show)
 
-data VCInfo = Git String
-            | Svn String
-            | Hg String
+data ScmInfo = Git String
+             | Svn String
+             | Hg String
     deriving (Show)
 
 instance Lift BuildInfo where
-    lift (BuildInfo bDate vcInfo) = [| BuildInfo bDate vcInfo |]
+    lift (BuildInfo bDate scmInfo) = [| BuildInfo bDate scmInfo |]
 
 instance Lift UTCTime where
     lift (UTCTime (ModifiedJulianDay day) diffTime) = 
@@ -32,7 +32,7 @@ instance Lift UTCTime where
             num = numerator $ toRational diffTime
             denom = denominator $ toRational diffTime
 
-instance Lift VCInfo where
+instance Lift ScmInfo where
     lift (Git s) = [| Git s |]
     lift (Svn s) = [| Svn s |]
     lift (Hg s)  = [| Hg s |]
