@@ -1,5 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
-module BuildInfo (
+module System.BuildInfo (
     buildInfo,
     BuildInfo(..)
 ) where

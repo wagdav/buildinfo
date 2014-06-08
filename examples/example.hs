@@ -1,5 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
-import BuildInfo
+import System.BuildInfo
 
 main :: IO ()
 main = putStrLn $ "My build information: " ++ show $(buildInfo)
