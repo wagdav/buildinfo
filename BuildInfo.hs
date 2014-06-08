@@ -39,7 +39,7 @@ instance Lift ScmInfo where
 
 buildInfo :: Q Exp
 buildInfo = do
-    bi <- runIO $ genBuildInfo
+    bi <- runIO genBuildInfo
     [| bi |]
 
 -- useful for debugging
