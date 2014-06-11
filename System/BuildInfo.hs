@@ -11,8 +11,10 @@ import Language.Haskell.TH.Ppr (pprint)
 
 import Data.Ratio ((%), numerator, denominator)
 import Data.Time
-import System.Process (runInteractiveCommand, waitForProcess)
+import System.Directory (getCurrentDirectory)
+import System.Process (runInteractiveProcess, waitForProcess)
 import System.IO (hGetLine)
+import System.FilePath ((</>), takeBaseName)
 import System.Exit
 
 data BuildInfo = BuildInfo
@@ -42,27 +44,29 @@ instance Lift ScmInfo where
 
 buildInfo :: Q Exp
 buildInfo = do
-    loc <- location
-    runIO $ print $ loc_filename loc
-    bi <- runIO genBuildInfo
+    l <- location
+    bi <- runIO $ genBuildInfo (basePath l)
     [| bi |]
+
+    where basePath loc = takeBaseName $ loc_filename loc
 
 -- useful for debugging
 pprintQ q = putStrLn . pprint =<< runQ q
 
 -- template Haskell free definitions
-genBuildInfo :: IO BuildInfo
-genBuildInfo = do
+genBuildInfo :: FilePath -> IO BuildInfo
+genBuildInfo basePath = do
+    pwd <- getCurrentDirectory
     date <- getCurrentTime
-    scmInfo <- genScmInfo
+    scmInfo <- genScmInfo (pwd </> basePath)
     return BuildInfo { buildDate=date
                      , scmInfo = scmInfo }
 
 {- source code management information -}
-genScmInfo :: IO (Maybe ScmInfo)
-genScmInfo =          git
-             `firstM` svn
-             `firstM` hg
+genScmInfo :: FilePath -> IO (Maybe ScmInfo)
+genScmInfo basePath =          git basePath
+                      `firstM` svn
+                      `firstM` hg
 
 infixr 0 `firstM`
 firstM :: Monad m => m (Maybe a) -> m (Maybe a) -> m (Maybe a)
@@ -72,15 +76,21 @@ firstM op1 op2 = do
         Just _ -> return r1
         Nothing -> op2
 
-git :: IO (Maybe ScmInfo)
-git = do
-    (_, out, _, handle) <- runInteractiveCommand "git describe --always"
+git :: FilePath -> IO (Maybe ScmInfo)
+git basePath = do
+    (_, out, _, handle) <- invokeGit
     exitCode <- waitForProcess handle
+    print basePath
     case exitCode of
         ExitSuccess -> do
             output <- hGetLine out
             return $ Just (Git output)
         _ -> return Nothing
+
+    where
+        invokeGit = runInteractiveProcess "git" ["describe", "--always"]
+                                          (Just basePath)
+                                          Nothing -- environment
 
 svn :: IO (Maybe ScmInfo)
 svn = return Nothing
